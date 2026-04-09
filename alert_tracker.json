@@ -1,0 +1,38 @@
+{
+    "19d70aa7b0962ee2": {
+        "count": 1,
+        "intent": "return",
+        "alert_sent": false,
+        "last_seen": "2026-04-09 10:59:33.001143"
+    },
+    "19d70d0445da814b": {
+        "count": 1,
+        "intent": "return",
+        "alert_sent": false,
+        "last_seen": "2026-04-09 11:27:28.290479"
+    },
+    "19d70e58116f54a2": {
+        "count": 3,
+        "intent": "return",
+        "alert_sent": true,
+        "last_seen": "2026-04-09 11:52:48.623005"
+    },
+    "19d70fda17eec555": {
+        "count": 2,
+        "intent": "return",
+        "alert_sent": true,
+        "last_seen": "2026-04-09 12:17:51.500348"
+    },
+    "19d710c1d8c70922": {
+        "count": 1,
+        "intent": "exchange",
+        "alert_sent": false,
+        "last_seen": "2026-04-09 12:32:06.150397"
+    },
+    "19d718a313e8da62": {
+        "count": 1,
+        "intent": "return",
+        "alert_sent": false,
+        "last_seen": "2026-04-09 14:49:53.881207"
+    }
+}
