@@ -1,12 +1,14 @@
 TEMPLATES = {
-    "return": "Thank you for reaching out. Please share your order ID so we can assist with your return.",
-    "refund": "We’re happy to help with your refund. Kindly provide your order details.",
-    "exchange": "We can assist with your exchange request. Please share product and order info.",
+    "return": "Thank you for reaching out. To proceed with your return or exchange request, please share your order number, reason for return, and clear images of the product with the tag intact.",
+    "refund": "Once your returned product has been reviewed and approved, our team will process the refund within 4–5 working days.",
+    "exchange": "Thank you for reaching out. To proceed with your return or exchange request, please share your order number, reason for return, and clear images of the product with the tag intact.",
 }
 
+# ✅ Escalation acknowledgement (already good, slightly improved tone)
 TEMPLATES["escalation_ack"] = (
     "Hi,\n\n"
     "Thank you for your patience. Your request has been escalated to our concerned team. "
-    "They will review and get back to you shortly.\n\n"
+    "They will review your case and get back to you shortly.\n\n"
     "Regards"
 )
+

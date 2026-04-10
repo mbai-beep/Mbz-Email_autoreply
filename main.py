@@ -8,8 +8,13 @@ from config import ALLOWED_INTENTS
 from logger import setup_logger
 from auth import get_gmail_service
 from gmail_client import add_label_to_email, get_or_create_label
+from gmail_client import is_agent
+from alert_manager import mark_agent_replied
 
-from alert_manager import should_escalate, get_alert_emails
+from alert_manager import (
+    update_thread_on_reply,
+    check_escalations
+)
 
 logger = setup_logger()
 
@@ -35,24 +40,14 @@ def main():
     service = get_gmail_service()
 
     AUTO_LABEL = get_or_create_label(service, "AutoReplied")
-    ESCALATED_LABEL = get_or_create_label(service, "Escalated")
+    ESCALATED_L1 = get_or_create_label(service, "Escalated_L1")
+    ESCALATED_L2 = get_or_create_label(service, "Escalated_L2")
 
     processed = load_processed()
 
     while True:
         try:
-            for attempt in range(3):
-                try:
-                    messages = fetch_unread_emails(service)
-                    break
-                except Exception as e:
-                    logger.warning(f"Fetch retry {attempt+1}: {e}")
-                    time.sleep(2)
-            else:
-                logger.error("Failed to fetch emails after retries")
-                time.sleep(30)
-                continue
-
+            messages = fetch_unread_emails(service)
             logger.info(f"Fetched {len(messages)} messages")
 
             for msg in messages:
@@ -61,99 +56,69 @@ def main():
                 if not msg_id or msg_id in processed:
                     continue
 
-                try:
-                    subject, body, thread_id, sender = get_email_content(service, msg_id)
-                except Exception as e:
-                    logger.error(f"Failed to read email {msg_id}: {e}")
-                    continue
+                subject, body, thread_id, sender = get_email_content(service, msg_id)
 
-                # ✅ Avoid replying to yourself
-                if "custcare@mbindia.net" in sender:
-                    logger.info("Skipping self email")
-                    continue
+                if is_agent(sender):
+                    logger.info(f"Agent replied on thread {thread_id}")
 
-                logger.info(f"Processing email: {subject}")
+                    mark_agent_replied(thread_id)
 
-                intent = classify_intent(body)
-                logger.info(f"Detected intent: {intent}")
+                    # mark as read to clean inbox
+                    mark_as_read(service, msg_id)
 
-                # ✅ ESCALATION
-                # ✅ ESCALATION (UPDATED - FINAL)
-                if should_escalate(thread_id, intent):
-                    logger.warning(f"Escalation triggered for thread {thread_id}")
-
-                    # 🚨 Send internal alert
-                    send_alert(
-                        service,
-                        f"Escalation: {intent}",
-                        f"Repeated issue detected\n\nSubject: {subject}",
-                        get_alert_emails()
-                    )
-
-                    # 🏷️ Add Escalated label
-                    add_label_to_email(service, msg_id, ESCALATED_LABEL)
-
-                    # 📩 Send acknowledgement to customer
-                    try:
-                        escalation_reply = TEMPLATES.get(
-                            "escalation_ack",
-                            "Hi,\n\nYour request has been escalated to our concerned team. "
-                            "They will get back to you shortly.\n\nRegards"
-                        )
-
-                        send_reply(
-                            service,
-                            thread_id,
-                            escalation_reply,
-                            sender,
-                            subject
-                        )
-
-                        logger.info("Escalation acknowledgement sent to customer")
-
-                    except Exception as e:
-                        logger.error(f"Failed to send escalation reply: {e}")
-
-                    # ✅ Mark email as read
-                    try:
-                        mark_as_read(service, msg_id)
-                    except Exception as e:
-                        logger.error(f"Failed to mark as read: {e}")
-
-                    # ✅ Save processed
                     processed.add(msg_id)
                     save_processed(processed)
 
-                    # ❗ CRITICAL: stop further processing (no AI reply)
                     continue
 
-                if intent not in ALLOWED_INTENTS:
-                    logger.info("Skipped: not relevant")
-                    mark_as_read(service, msg_id)
-                    processed.add(msg_id)
-                    continue
+                logger.info(f"Processing: {subject}")
 
-                try:
-                    reply = generate_reply(intent, body)
-                except Exception as e:
-                    logger.error(f"AI failed: {e}")
-                    reply = TEMPLATES.get(intent, "We will get back to you shortly.")
+                intent = classify_intent(body)
 
-                try:
+                # ✅ ALWAYS update thread (important!)
+                update_thread_on_reply(thread_id, body, intent)
+
+                # 🔹 Step 1: Auto Reply
+                if intent in ALLOWED_INTENTS:
+                    try:
+                        reply = generate_reply(intent, body)
+                    except:
+                        reply = TEMPLATES.get(intent, "We will get back to you shortly.")
+
                     send_reply(service, thread_id, reply, sender, subject)
                     add_label_to_email(service, msg_id, AUTO_LABEL)
-                    logger.info("Reply sent successfully")
-                except Exception as e:
-                    logger.error(f"Failed to send reply: {e}")
 
-                try:
-                    mark_as_read(service, msg_id)
-                    logger.info("Marked email as read")
-                except Exception as e:
-                    logger.error(f"Failed to mark as read: {e}")
-
+                # mark read + processed
+                mark_as_read(service, msg_id)
                 processed.add(msg_id)
-                save_processed(processed)
+
+            save_processed(processed)
+
+            # 🚨 Step 2: Run escalation checker every loop
+            alerts = check_escalations()
+
+            for alert in alerts:
+                thread_id = alert["thread_id"]
+                level = alert["level"]
+                email = alert["email"]
+
+                logger.warning(f"Escalation L{level} for {thread_id}")
+
+                send_alert(
+                    service,
+                    f"Escalation Level {level}",
+                    f"Thread {thread_id} pending for {level * 24} hours.",
+                    [email]
+                )
+
+                # Apply labels (you may need mapping thread->msg)
+                if level == 1:
+                    label_id = ESCALATED_L1
+                else:
+                    label_id = ESCALATED_L2
+
+                # ⚠️ If you have thread-level labeling, apply here
+                # else skip or enhance later
 
         except Exception as e:
             logger.error(f"Loop error: {e}")
@@ -163,4 +128,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

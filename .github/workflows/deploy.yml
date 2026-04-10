@@ -1,0 +1,52 @@
+name: Deploy to Windows EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+
+    steps:
+      - name: Deploy to EC2 via PowerShell
+        shell: powershell
+        run: |
+          $password = ConvertTo-SecureString "${{ secrets.EC2_PASSWORD }}" -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ("${{ secrets.EC2_USER }}", $password)
+
+          Invoke-Command -ComputerName ${{ secrets.EC2_HOST }} `
+            -Credential $cred `
+            -ScriptBlock {
+
+                Write-Output "🚀 Starting Deployment..."
+
+                cd C:\Mbz-Email_autoreply
+
+                # ✅ Pull latest code
+                git pull origin main
+
+                # ✅ Use venv python directly (NO activate needed)
+                $python = "C:\Mbz-Email_autoreply\venv\Scripts\python.exe"
+                $pip = "C:\Mbz-Email_autoreply\venv\Scripts\pip.exe"
+
+                # ✅ Install dependencies
+                & $pip install -r requirements.txt
+
+                # ✅ Stop ONLY your bot (safe)
+                Get-CimInstance Win32_Process | Where-Object {
+                    $_.CommandLine -like "*main.py*"
+                } | ForEach-Object {
+                    Stop-Process -Id $_.ProcessId -Force
+                }
+
+                # ✅ Start bot with logging
+                Start-Process $python `
+                  -ArgumentList "run_bot.py" `
+                  -RedirectStandardOutput "wrapper.log" `
+                  -RedirectStandardError "wrapper_error.log" `
+                  -WindowStyle Hidden
+
+                Write-Output "✅ Deployment Completed"
+            }
