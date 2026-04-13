@@ -66,9 +66,9 @@
     "19d76257a1901798": {
         "intent": "refund",
         "order_details_received": true,
-        "order_details_time": "2026-04-10 12:42:16.147634",
+        "order_details_time": "2026-04-13 11:10:02.568333",
         "agent_replied": false,
-        "escalation_level": 0
+        "escalation_level": 2
     },
     "19d76283818080b0": {
         "intent": "other",
@@ -82,7 +82,7 @@
         "order_details_received": true,
         "order_details_time": "2026-04-10 14:12:33.466038",
         "agent_replied": false,
-        "escalation_level": 0
+        "escalation_level": 2
     },
     "19d768706f18b288": {
         "intent": "return",
@@ -96,10 +96,38 @@
         "order_details_received": true,
         "order_details_time": "2026-04-10 14:12:43.915731",
         "agent_replied": false,
-        "escalation_level": 0
+        "escalation_level": 2
     },
     "19d7522d6c3e8f91": {
         "intent": "other",
+        "order_details_received": false,
+        "order_details_time": null,
+        "agent_replied": false,
+        "escalation_level": 0
+    },
+    "19d85463bc7acc83": {
+        "intent": "return",
+        "order_details_received": true,
+        "order_details_time": "2026-04-13 11:04:17.876405",
+        "agent_replied": false,
+        "escalation_level": 0
+    },
+    "19d857b8e8e13823": {
+        "intent": "refund",
+        "order_details_received": false,
+        "order_details_time": null,
+        "agent_replied": false,
+        "escalation_level": 0
+    },
+    "19d858e7bdb26967": {
+        "intent": "refund",
+        "order_details_received": true,
+        "order_details_time": "2026-04-13 12:23:12.146983",
+        "agent_replied": false,
+        "escalation_level": 0
+    },
+    "19d859faeec0f99f": {
+        "intent": "inquiry",
         "order_details_received": false,
         "order_details_time": null,
         "agent_replied": false,

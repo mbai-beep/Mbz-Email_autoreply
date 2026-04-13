@@ -18,7 +18,7 @@ def fetch_unread_emails(service):
         return []
 
 
-# ✅ GET EMAIL CONTENT
+# ✅ GET EMAIL CONTENT (UPDATED 🔥)
 def get_email_content(service, msg_id):
     msg = service.users().messages().get(
         userId="me",
@@ -39,6 +39,12 @@ def get_email_content(service, msg_id):
         ""
     )
 
+    # ✅ NEW: Extract Message-ID (CRITICAL FOR THREADING)
+    message_id = next(
+        (h["value"] for h in headers if h["name"].lower() == "message-id"),
+        None
+    )
+
     # ✅ Extract pure email
     match = re.search(r'<(.+?)>', sender)
     if match:
@@ -46,10 +52,10 @@ def get_email_content(service, msg_id):
 
     body = extract_body(payload)
 
-    return subject, body, msg.get("threadId"), sender
+    return subject, body, msg.get("threadId"), sender, message_id
 
 
-# ✅ BODY EXTRACTOR (Improved)
+# ✅ BODY EXTRACTOR
 def extract_body(payload):
     body = ""
 
@@ -63,7 +69,6 @@ def extract_body(payload):
                     if data:
                         return base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
 
-                # fallback to HTML
                 elif mime == "text/html":
                     data = part["body"].get("data")
                     if data and not body:
@@ -87,15 +92,20 @@ def clean_html(html):
     return clean.strip()
 
 
-# ✅ SEND REPLY
-def send_reply(service, thread_id, reply_text, to_email, subject):
+# ✅ SEND REPLY (FIXED THREADING 🔥)
+def send_reply(service, thread_id, reply_text, to_email, subject, message_id=None):
     try:
-        # remove accidental subject duplication
         reply_text = re.sub(r"Subject:.*\n", "", reply_text, flags=re.IGNORECASE)
 
         message = MIMEText(reply_text.strip())
+
         message["to"] = to_email
         message["subject"] = f"Re: {subject}"
+
+        # ✅ CRITICAL FOR THREADING
+        if message_id:
+            message["In-Reply-To"] = message_id
+            message["References"] = message_id
 
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
@@ -206,11 +216,12 @@ def add_label_to_thread(service, thread_id, label_id):
         print(f"Thread labeling failed: {e}")
 
 
-# 🆕 DETECT IF AGENT REPLIED
+# 🆕 DETECT IF AGENT REPLIED (FIXED BUG 🔥)
 def is_agent(sender):
     agents = [
         "custcare@mbindia.net",
         "himanshi@mbindia.net",
+        "manoj.kumar@mbindia.net",
         "shuja@mbindia.net"
     ]
     return sender.lower() in agents
